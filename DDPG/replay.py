@@ -1,6 +1,5 @@
 import random
 import numpy as np
-
 REPLAY_BUFFER_SIZE = 100
 MINI_BATCH_SIZE = 10
 

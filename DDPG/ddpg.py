@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
-from ddpg.actor import *
-from ddpg.critic import *
-from ddpg.replay import *
+import DDPG.actor
+from DDPG.actor import *
+from DDPG.critic import *
+from DDPG.replay import *
 
 import tensorflow as tf
 import gym

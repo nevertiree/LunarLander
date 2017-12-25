@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from ddpg.agent import Agent
+from DDPG.agent import Agent
 
 import tensorflow as tf
 import numpy as np
