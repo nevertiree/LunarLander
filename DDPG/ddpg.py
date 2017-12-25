@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import DDPG.actor
 from DDPG.actor import *
 from DDPG.critic import *
 from DDPG.replay import *
@@ -28,12 +27,17 @@ def run(sess, env):
     # Initialize Replay Buffer
     replay_buffer = ReplayBuffer()
 
-    for i in range(MAX_EPISODE_NUM):
+    current_episode_num = 0
+    while current_episode_num < MAX_EPISODE_NUM:
         # Initialize a random process N for action exploration
         # Receive initial observation state s
         state = env.reset()
-        for j in range(MAX_STEP_NUM):
+
+        current_step_num = 0
+        while current_step_num < MAX_STEP_NUM:
+
             env.render()
+
             # Select Action from [Actor(s)+N]
             action = estimate_actor.choose_action(sess, state[np.newaxis])[0]
             # Execute this action and observe reward and new state
@@ -71,12 +75,12 @@ def run(sess, env):
 
                 break
 
-            # Move to next state
+            # End if
             state = new_state
-
-            # End for
+            current_step_num += 1
 
         # End for
+        current_episode_num += 1
 
     # End def
 
