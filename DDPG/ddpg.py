@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+import time
+import os
+import shutil
+
 from DDPG.actor import *
 from DDPG.critic import *
 from DDPG.replay import *
@@ -7,7 +11,7 @@ import tensorflow as tf
 import gym
 import numpy as np
 
-MAX_EPISODE_NUM = 100
+MAX_EPISODE_NUM = 2
 MAX_STEP_NUM = 100
 
 GAMMA = 0.9
@@ -18,8 +22,6 @@ def run(sess, env):
     estimate_actor, estimate_critic = Actor('Estimate', env), Critic('Estimate', env)
     # Initialize Target Network with parameters of Estimated Network
     target_actor, target_critic = Actor('Target', env), Critic('Target', env)
-    target_actor.network_para = estimate_actor.network_para
-    target_critic.network_para = estimate_critic.network_para
 
     # Environment
     randomness = 0
@@ -31,14 +33,17 @@ def run(sess, env):
     while current_episode_num < MAX_EPISODE_NUM:
         # Initialize a random process N for action exploration
         # Receive initial observation state s
-        state = env.reset()
 
+        state = env.reset()
+        episode_score = 0
+
+        start_time = time.time()
         current_step_num = 0
         while current_step_num < MAX_STEP_NUM:
 
-            env.render()
+            # env.render()
 
-            # Select Action from [Actor(s)+N]
+            # Select Action from [Actor(s) + Noise]
             action = estimate_actor.choose_action(sess, state[np.newaxis])[0]
             # Execute this action and observe reward and new state
             new_state, reward, done, _ = env.step(int(action))
@@ -66,7 +71,9 @@ def run(sess, env):
                 # Update the Actor Network (Estimated Network) using the sampled gradient
                 estimate_actor.update(sess=sess,
                                       s=mini_batch['state'],
-                                      action_grad=tf.gradients(estimate_critic.q_value, mini_batch['action']))
+                                      a_g=tf.gradients(estimate_critic.q_value,
+                                                       mini_batch['action'],
+                                                       name='Action_Gradient'))
 
                 # Update the Target Actor and Critic Networks softly
                 target_actor.update(sess=sess, e_p=estimate_actor.network_para)
@@ -76,10 +83,14 @@ def run(sess, env):
                 break
 
             # End if
+            episode_score += reward
             state = new_state
             current_step_num += 1
 
         # End for
+        end_time = time.time()
+        # tf.summary.scalar('Episode_Score', episode_score)
+        print("Current episode num is %d, cost time is %f" % (current_episode_num, end_time-start_time))
         current_episode_num += 1
 
     # End def
@@ -90,6 +101,16 @@ if __name__ == '__main__':
     environment = environment.unwrapped
     environment.seed(1)
 
+    log_dir = 'log/'
+
     with tf.Session() as session:
+        merged = tf.summary.merge_all()
         session.run(tf.global_variables_initializer())
         run(session, environment)
+
+        if os.path.exists(log_dir):
+            shutil.rmtree(log_dir)
+        tf.summary.FileWriter(log_dir, session.graph)
+        writer = tf.summary.FileWriter(logdir='log/')
+
+

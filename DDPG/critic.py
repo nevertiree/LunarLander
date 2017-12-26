@@ -7,18 +7,13 @@ import numpy as np
 
 class Critic(Agent):
     def __init__(self, network_type, env):
-        with tf.variable_scope('Critic'):
+        self.agent_scope = network_type + '-Critic'
+        with tf.variable_scope(self.agent_scope):
             super(Critic, self).__init__(network_type, env)
-
             self.loss = None
             self.optimizer = tf.train.AdamOptimizer()
-
             self.q_value = self.critic_network()
-
-            if self.network_type == 'Estimate':
-                self.network_para = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='Critic/Estimate')
-            else:
-                self.network_para = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='Critic/Target')
+            self.network_para = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.agent_scope)
 
     def critic_network(self):
         scope = self.network_type
@@ -27,7 +22,7 @@ class Critic(Agent):
         else:
             trainable = False
 
-        with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
+        with tf.variable_scope('Network', reuse=tf.AUTO_REUSE):
             init_w = tf.random_normal_initializer(0., 0.1)
             init_b = tf.constant_initializer(0.1)
 
@@ -66,28 +61,28 @@ class Critic(Agent):
     def update(self, *, sess, t_q_v=None, s=None, a=None, e_p=None, tau=0.99):
         # t_q_v = target_q_value ,a = action ,s = state, e_p = estimate_para
 
-        # Update Estimate Network Parameter
-        if self.network_type == 'Estimate':
-            # Calculate the Loss Function
-            # todo
-            estimate_q_value = self.critic_network()
-            target_q_value = tf.placeholder(dtype=tf.float32, shape=[None, 1], name='target_q_value')
-            self.loss = tf.reduce_mean(tf.squared_difference(estimate_q_value, target_q_value))
+        with tf.variable_scope(self.agent_scope + '/Update'):
+            # Update Estimate Network Parameter
+            if self.network_type == 'Estimate':
+                # Calculate the Loss Function
+                estimate_q_value = self.critic_network()
+                target_q_value = tf.placeholder(dtype=tf.float32, shape=[None, 1], name='target_q_value')
+                self.loss = tf.reduce_mean(tf.squared_difference(estimate_q_value, target_q_value), name='TD-Loss')
 
-            one_hot_a = np.zeros((len(a), self.action_dim))
-            for i in range(len(one_hot_a)):
-                one_hot_a[i][a[i]] = 1
+                one_hot_a = np.zeros((len(a), self.action_dim))
+                for i in range(len(one_hot_a)):
+                    one_hot_a[i][a[i]] = 1
 
-            # Optimizer
-            train_op = self.optimizer.minimize(self.loss)
-            sess.run(tf.global_variables_initializer())
-            sess.run(train_op, feed_dict={
-                self.state: s,
-                self.action: one_hot_a[:np.newaxis],
-                target_q_value: t_q_v
-            })
+                # Optimizer
+                train_op = self.optimizer.minimize(self.loss)
+                sess.run(tf.global_variables_initializer())
+                sess.run(train_op, feed_dict={
+                    self.state: s,
+                    self.action: one_hot_a[:np.newaxis],
+                    target_q_value: t_q_v
+                })
 
-        # Update Target Network Parameter
-        else:
-            sess.run([tf.assign(t, tau * t + (1-tau) * e)
-                      for t, e in zip(self.network_para, e_p)])
+            # Update Target Network Parameter
+            else:
+                sess.run([tf.assign(t, tau * t + (1-tau) * e)
+                          for t, e in zip(self.network_para, e_p)])
