@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*_
+
 import random
 import numpy as np
 REPLAY_BUFFER_SIZE = 100
@@ -40,7 +42,8 @@ class ReplayBuffer:
             'state': np.array([x[0] for x in raw_list]),
             'action': np.array([x[1] for x in raw_list]),
             'reward': np.array([x[2] for x in raw_list]),
-            'new_state': np.array([x[3] for x in raw_list])
+            'terminal': np.array([x[3] for x in raw_list]),
+            'new_state': np.array([x[4] for x in raw_list])
         }
 
     def buffer_filled(self):
